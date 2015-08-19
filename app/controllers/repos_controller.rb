@@ -25,7 +25,7 @@ class ReposController < ApplicationController
         benchmark_result_type = BenchmarkResultType.find(benchmark_result_type_id)
 
         benchmark_runs = fetch_benchmark_runs(
-          'Commit', @form_result_type, benchmark_result_type, @benchmark_run_display_count
+          'Commit', @form_result_type, benchmark_result_type, @benchmark_run_display_count, nil
         )
 
         next if benchmark_runs.empty?
@@ -71,6 +71,7 @@ class ReposController < ApplicationController
   def show_releases
     @organization = find_organization_by_name(params[:organization_name])
     @repo = find_organization_repos_by_name(@organization, params[:repo_name])
+    initiator_ids = Release.where(repo_id: @repo.id).pluck(:id)
 
     if @form_result_type = params[:result_type]
       @benchmark_type = find_benchmark_type_by_category(@form_result_type)
@@ -85,7 +86,7 @@ class ReposController < ApplicationController
         benchmark_result_type = BenchmarkResultType.find(benchmark_result_type_id)
 
         benchmark_runs = fetch_benchmark_runs(
-          'Release', @form_result_type, benchmark_result_type
+          'Release', @form_result_type, benchmark_result_type, nil, initiator_ids
         ).to_a
 
         next if benchmark_runs.empty?
@@ -140,8 +141,8 @@ class ReposController < ApplicationController
     @repo.benchmark_types.find_by_category(category)
   end
 
-  def fetch_benchmark_runs(initiator_type, form_result_type, benchmark_result_type, limit=nil)
-    BenchmarkRun
+  def fetch_benchmark_runs(initiator_type, form_result_type, benchmark_result_type, limit=nil, initiator_ids)
+    runs = BenchmarkRun
       .joins(:benchmark_type)
       .includes(:initiator)
       .where('benchmark_types.category = ?', form_result_type)
@@ -151,6 +152,9 @@ class ReposController < ApplicationController
         validity: true
       )
       .limit(limit)
+    runs = runs.where(initiator_id:  initiator_ids) unless initiator_ids.nil?
+
+    runs
   end
 
   def fetch_categories

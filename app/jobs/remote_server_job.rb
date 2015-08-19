@@ -145,6 +145,24 @@ class RemoteServerJob < ActiveJob::Base
     )
   end
 
+  def jruby_releases(ssh, ruby_version, options)
+    options.reverse_merge!({ jruby_benchmarks: true, jruby_memory_benchmarks: true })
+
+    execute_ssh_commands(ssh,
+      [
+        "docker pull rubybench/jruby_releases",
+        "docker run --rm
+          -e \"JRUBY_BENCHMARKS=#{options[:jruby_benchmarks]}\"
+          -e \"JRUBY_MEMORY_BENCHMARKS=#{options[:jruby_memory_benchmarks]}\"
+          -e \"JRUBY_VERSION=#{ruby_version}\"
+          -e \"API_NAME=#{Rails.application.secrets.api_name}\"
+          -e \"API_PASSWORD=#{Rails.application.secrets.api_password}\"
+          #{build_include_patterns(options[:include_patterns])}
+          rubybench/jruby_releases".squish
+      ]
+    )
+  end
+
   def execute_ssh_commands(ssh, commands)
     commands.each do |command|
       ssh_exec!(ssh, command)
